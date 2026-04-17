@@ -1,0 +1,23 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body{
+  padding: 20px;
+}
+.job-post{
+  border: 1px solid black;
+  padding: 10px;
+  margin-bottom: 20px;
+  width: 500px;
+}
+button{
+  padding: 10px;
+  cursor: pointer;
+}
+.result{
+  border: 1px solid black;
+  width: 500px;
+}
