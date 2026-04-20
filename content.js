@@ -1,3 +1,5 @@
+
+
 function isJobListPage() {
   return location.pathname.startsWith('/zf_user/jobs/list/');
 }
@@ -23,7 +25,24 @@ function getJobUrl(card) {
 }
 
 function getCompanyElement(card) {
-  return card.querySelector('.company_nm a, .company_nm, [class*="company"] a, [class*="company"]');
+  const companylink = card.querySelector('.company_nm a, [class*="company"] a');
+  if(companylink) return companylink;
+  
+  const spans = card.querySelectorAll('.company_nm span');
+  
+  for (const span of spans){
+    let text=span.textContent.trim();
+    
+    if(!text) continue;
+
+    const cleaned = isCompanyExtraText(text);
+    if(cleaned) {
+      return{
+        textContent: cleaned
+      }
+    }
+  }
+  return null;
 }
 
 function getTitleElement(card) {
@@ -32,17 +51,15 @@ function getTitleElement(card) {
 
 function getMetaTexts(card) {
   const metaSelectors = [
-    '.notification_info .job_meta span',
-    '.notification_info .job_condition span',
-    '.notification_info .condition_area span',
-    '.notification_info .job_sector a',
-    '.notification_info .job_sector span',
-    '.notification_info .recruit_condition span',
-    '.notification_info .recruit_condition a',
-    '.notification_info .job_info span',
-    '.notification_info .job_info a',
-    '.notification_info .info_area span',
-    '.notification_info .info_area a'
+    '.recruit_info .work_place',
+    '.recruit_info .career',
+    '.recruit_info .education',
+
+    '.job_meta .job_sector span',
+    '.job_meta .job_sector a',
+    '.job_badge span',
+    '.job_badge a',
+    '.support_info .support_detail span'
   ];
 
   const values = [];
@@ -61,10 +78,35 @@ function getMetaTexts(card) {
   return values;
 }
 
+function isCompanyExtraText(text) {
+  const extras = [
+    '관심기업 등록',
+    '대기업',
+    '중견기업',
+    '중소기업',
+    '공기업',
+    '외국계',
+    '코스피',
+    '코스닥',
+    '상장',
+    '비상장',
+    '그룹사',
+    '계열사',
+  ];
+  let cleaned = text;
+  extras.forEach(word=>{
+    cleaned = cleaned.replace(word,'')
+  });
+
+  return cleaned.replace(/\s+/g,' ').trim();
+}
+
+
+
 function parseMeta(metaTexts) {
   const locationKeywords = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주', '재택', '전국'];
   const careerKeywords = ['신입', '경력', '경력무관', '인턴', '주니어', '시니어'];
-  const educationKeywords = ['학력', '대졸', '초대졸', '고졸', '석사', '박사', '무관'];
+  const educationKeywords = ['학력', '대졸', '초대졸', '고졸', '석사', '박사', '무관','대학(2,3년)', '대학교(4년)'];
   const employmentKeywords = ['정규직', '계약직', '인턴', '프리랜서', '파견직', '아르바이트', '위촉직', '연수생'];
 
   let location = '정보없음';
@@ -72,14 +114,21 @@ function parseMeta(metaTexts) {
   let required = '정보없음';
   let employmentType = '정보없음';
 
-  for (const text of metaTexts) {
+  for (const raw of metaTexts) {
+    const text = raw.replace(/\s+/g, ' ').trim();
+
     if (location === '정보없음' && locationKeywords.some(keyword => text.includes(keyword))) {
       location = text;
       continue;
     }
-    if (career === '정보없음' && careerKeywords.some(keyword => text.includes(keyword))) {
-      career = text;
-      continue;
+    if (career === '정보없음' && text.includes('.')){
+      const parts = text.split('.').map(part=>part.trim()).filter(Boolean);
+      
+      if(parts.length>=2){
+        career = parts[0] || '정보없음';
+        employmentType = parts.slice(1).join(' . ') || '정보없음';
+        continue;
+      }
     }
     if (required === '정보없음' && educationKeywords.some(keyword => text.includes(keyword))) {
       required = text;
@@ -89,18 +138,22 @@ function parseMeta(metaTexts) {
       employmentType = text;
       continue;
     }
+    }
+    const extras = metaTexts.filter(text => 
+      ![location, career, required, employmentType].includes(text) && 
+      !/^D-\d+$/i.test(text)&&
+      !/등록/.test(text));
+  
+    return {
+      location,
+      career,
+      required,
+      employmentType,
+      preferred: extras.join(', ') || '정보없음'
+    };
   }
 
-  const extras = metaTexts.filter(text => ![location, career, required, employmentType].includes(text));
 
-  return {
-    location,
-    career,
-    required,
-    employmentType,
-    preferred: extras.join(', ') || '정보없음'
-  };
-}
 
 function getJobData(card) {
   const companyElement = getCompanyElement(card);
@@ -109,7 +162,7 @@ function getJobData(card) {
   const parsedMeta = parseMeta(metaTexts);
   const jobUrl = getJobUrl(card);
 
-  const company = getText(companyElement);
+  const company = getText(getCompanyElement(card));
   const title = getText(titleElement);
   const id = jobUrl || company + '_' + title;
 
