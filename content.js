@@ -1,5 +1,3 @@
-
-
 function isJobListPage() {
   return location.pathname.startsWith('/zf_user/jobs/list/');
 }
@@ -100,82 +98,172 @@ function isCompanyExtraText(text) {
 
   return cleaned.replace(/\s+/g,' ').trim();
 }
+function getPreferredTexts(card) {
+  const selectors = [
+    '.job_meta .job_sector span',
+    '.job_meta .job_sector a',
+    '.job_badge span',
+    '.job_badge a'
+  ];
 
+  const values = [];
+  const seen = new Set();
 
-
-function parseMeta(metaTexts) {
-  const locationKeywords = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주', '재택', '전국'];
-  const careerKeywords = ['신입', '경력', '경력무관', '인턴', '주니어', '시니어'];
-  const educationKeywords = ['학력', '대졸', '초대졸', '고졸', '석사', '박사', '무관','대학(2,3년)', '대학교(4년)'];
-  const employmentKeywords = ['정규직', '계약직', '인턴', '프리랜서', '파견직', '아르바이트', '위촉직', '연수생'];
-
-  let location = '정보없음';
-  let career = '정보없음';
-  let required = '정보없음';
-  let employmentType = '정보없음';
-
-  for (const raw of metaTexts) {
-    const text = raw.replace(/\s+/g, ' ').trim();
-
-    if (location === '정보없음' && locationKeywords.some(keyword => text.includes(keyword))) {
-      location = text;
-      continue;
-    }
-    if (career === '정보없음' && text.includes('.')){
-      const parts = text.split('.').map(part=>part.trim()).filter(Boolean);
-      
-      if(parts.length>=2){
-        career = parts[0] || '정보없음';
-        employmentType = parts.slice(1).join(' . ') || '정보없음';
-        continue;
+  selectors.forEach(selector => {
+    card.querySelectorAll(selector).forEach(el => {
+      const text = el.textContent.trim().replace(/\s+/g, ' ');
+      if (text && !seen.has(text)) {
+        seen.add(text);
+        values.push(text);
       }
-    }
-    if (required === '정보없음' && educationKeywords.some(keyword => text.includes(keyword))) {
-      required = text;
-      continue;
-    }
-    if (employmentType === '정보없음' && employmentKeywords.some(keyword => text.includes(keyword))) {
-      employmentType = text;
-      continue;
-    }
-    }
-    const extras = metaTexts.filter(text => 
-      ![location, career, required, employmentType].includes(text) && 
-      !/^D-\d+$/i.test(text)&&
-      !/등록/.test(text));
-  
+    });
+  });
+
+  return values;
+}
+
+function parseCareerAndEmployment(text) {
+  if (!text || text === '정보없음') {
     return {
-      location,
-      career,
-      required,
-      employmentType,
-      preferred: extras.join(', ') || '정보없음'
+      career: '정보없음',
+      employmentType: '정보없음'
     };
   }
+
+  const parts = text
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split('·')
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  return {
+    career: parts[0] || '정보없음',
+    employmentType: parts.slice(1).join(' · ') || '정보없음'
+  };
+}
+
+function getDateTexts(card) {
+  return [...card.querySelectorAll('.support_info .support_detail span')]
+    .map(el => el.textContent.trim().replace(/\s+/g, ' '))
+    .filter(Boolean);
+}
+
+function parseDates(dateTexts) {
+  let deadline = '정보없음';
+  let postedDate = '정보없음';
+
+  for (const text of dateTexts) {
+    if (deadline === '정보없음' && (text.startsWith('D-') || text.includes('~'))) {
+      deadline = text;
+      continue;
+    }
+
+    if (postedDate === '정보없음' && (text.includes('등록') || text.includes('전'))) {
+      postedDate = text;
+      continue;
+    }
+  }
+
+  return {
+    deadline,
+    postedDate
+  };
+}
+
+// function parseMeta(metaTexts) {
+//   const locationKeywords = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주', '재택', '전국'];
+//   const careerKeywords = ['신입', '경력', '경력무관', '인턴', '주니어', '시니어'];
+//   const educationKeywords = ['학력', '대졸', '초대졸', '고졸', '석사', '박사', '무관','대학(2,3년)', '대학교(4년)'];
+//   const employmentKeywords = ['정규직', '계약직', '인턴', '프리랜서', '파견직', '아르바이트', '위촉직', '연수생'];
+
+//   let location = '정보없음';
+//   let career = '정보없음';
+//   let required = '정보없음';
+//   let employmentType = '정보없음';
+
+//   for (const raw of metaTexts) {
+//     const text = raw.replace(/\s+/g, ' ').trim();
+
+//     if (location === '정보없음' && locationKeywords.some(keyword => text.includes(keyword))) {
+//       location = text;
+//       continue;
+//     }
+//     if (career === '정보없음' && text.includes('.')){
+//       const parts = text.split('.').map(part=>part.trim()).filter(Boolean);
+      
+//       if(parts.length>=2){
+//         career = parts[0] || '정보없음';
+//         employmentType = parts.slice(1).join(' . ') || '정보없음';
+//         continue;
+//       }
+//     }
+//     if (required === '정보없음' && educationKeywords.some(keyword => text.includes(keyword))) {
+//       required = text;
+//       continue;
+//     }
+//     if (employmentType === '정보없음' && employmentKeywords.some(keyword => text.includes(keyword))) {
+//       employmentType = text;
+//       continue;
+//     }
+//     }
+//     const extras = metaTexts.filter(text => 
+//       ![location, career, required, employmentType].includes(text) && 
+//       !/^D-\d+$/i.test(text)&&
+//       !/등록/.test(text));
+  
+//     return {
+//       location,
+//       career,
+//       required,
+//       employmentType,
+//       preferred: extras.join(', ') || '정보없음'
+//     };
+//   }
 
 
 
 function getJobData(card) {
   const companyElement = getCompanyElement(card);
   const titleElement = getTitleElement(card);
-  const metaTexts = getMetaTexts(card);
-  const parsedMeta = parseMeta(metaTexts);
-  const jobUrl = getJobUrl(card);
+  
+  const locationElement = card.querySelector('.recruit_info .work_place');
+  const careerElement = card.querySelector('.recruit_info .career');
+  const educationElement = card.querySelector('.recruit_info .education');
+  const deadlineElement = card.querySelector('.support_info .support_detail .date');
+  const postedDateElement = card.querySelector('.support_info .support_detail .deadlines');
 
-  const company = getText(getCompanyElement(card));
+
+  const company = getText(companyElement);
   const title = getText(titleElement);
-  const id = jobUrl || company + '_' + title;
+  const location = getText(locationElement);
+  const careerRaw = getText(careerElement);
+  const required = getText(educationElement);
+  const deadline = getText(deadlineElement);
+  const postedDate = getText(postedDateElement);
+  
+  const parsedCareer = parseCareerAndEmployment(careerRaw);
+ 
 
+
+  const preferredTexts = getPreferredTexts(card);
+  const preferred = preferredTexts.join(', ') || '정보없음';
+  
+  const jobUrl = getJobUrl(card);
+  const id = jobUrl || company + '_' + title;
+  
   return {
     id,
     company,
     title,
-    career: parsedMeta.career,
-    required: parsedMeta.required,
-    location: parsedMeta.location,
-    employmentType: parsedMeta.employmentType,
-    preferred: parsedMeta.preferred,
-    url: jobUrl
+    career: parsedCareer.career,
+    required: required,
+    location: location,
+    employmentType: parsedCareer.employmentType,
+    preferred: preferred,
+    url: jobUrl,
+    deadline: deadline,
+    postedDate: postedDate,
   };
 }
 

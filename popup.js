@@ -70,6 +70,8 @@ function createJobCard(job) {
   const locationRow = createJobRow("지역:", job.location);
   const employmentTypeRow = createJobRow("고용형태:", job.employmentType);
   const preferredRow = createJobRow("우대/키워드:", job.preferred);
+  const deadlineRow = createJobRow("마감일:",job.deadline);
+  const postedDate = createJobRow("등록일:",job.postedDate);
 
   card.append(title);
   card.append(companyRow);
@@ -78,6 +80,8 @@ function createJobCard(job) {
   card.append(locationRow);
   card.append(employmentTypeRow);
   card.append(preferredRow);
+  card.append(deadlineRow);
+  card.append(postedDate);
 
   if (job.url) {
     const link = document.createElement("a");
